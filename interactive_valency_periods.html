@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Diachronic Valency Map</title>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<style>
+body { margin: 0; font-family: Georgia, serif; background: white; }
+#network { width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<div id="network"></div>
+
+<script>
+const nodes = new vis.DataSet([
+  {id:"OE", label:"Old English", group:"period", x:-600, y:-250, fixed:true},
+  {id:"ME", label:"Middle English\n(click)", group:"period", x:0, y:-250, fixed:true},
+  {id:"PDE", label:"Present-Day English", group:"period", x:600, y:-250, fixed:true},
+
+  {id:"lician", label:"lician\nARG1 EXP-DAT → ARG2 STIM-NOM", group:"native", x:-600, y:-70, fixed:true},
+  {id:"liken_ME", label:"liken\nARG1 EXP-NOM → ARG2 STIM", group:"native", x:0, y:-70, fixed:true},
+  {id:"like_PDE", label:"like\nARG1 EXP-NOM → ARG2 STIM", group:"native", x:600, y:-70, fixed:true},
+
+  {id:"cweman", label:"cweman\nARG1 STIM-NOM → ARG2 EXP-DAT", group:"native", x:-600, y:170, fixed:true},
+  {id:"quemen", label:"quemen\nARG1 STIM-NOM → ARG2 EXP", group:"native", x:0, y:170, fixed:true},
+  {id:"plesen", label:"plesen\nARG1 STIM-NOM → ARG2 EXP-OBJ/PP", group:"romance", x:0, y:350, fixed:true},
+  {id:"please", label:"please\nARG1 STIM-NOM → ARG2 EXP-OBJ", group:"romance", x:600, y:350, fixed:true},
+
+  {id:"Romance", label:"Romance influence\nFrench / Latin\n(click)", group:"contact", x:-260, y:430, fixed:true}
+]);
+
+const allEdges = [
+  {id:"e1", from:"OE", to:"lician"},
+  {id:"e2", from:"OE", to:"cweman"},
+  {id:"e3", from:"ME", to:"liken_ME"},
+  {id:"e4", from:"ME", to:"quemen"},
+  {id:"e5", from:"ME", to:"plesen"},
+  {id:"e6", from:"PDE", to:"like_PDE"},
+  {id:"e7", from:"PDE", to:"please"},
+
+  {id:"e8", from:"lician", to:"liken_ME"},
+  {id:"e9", from:"liken_ME", to:"like_PDE"},
+
+  {id:"e10", from:"cweman", to:"quemen"},
+  {id:"e11", from:"quemen", to:"plesen"},
+  {id:"e12", from:"plesen", to:"please"},
+
+  {id:"e13", from:"Romance", to:"plesen", dashes:true},
+  {id:"e14", from:"Romance", to:"please", dashes:true}
+];
+
+const edges = new vis.DataSet(allEdges.map(e => ({
+  ...e,
+  arrows:"to",
+  color:{color:"#999"},
+  width:1.7
+})));
+
+const options = {
+  physics:false,
+  interaction:{hover:true},
+  nodes:{
+    shape:"box",
+    margin:16,
+    widthConstraint:{minimum:190, maximum:260},
+    font:{size:23, face:"Georgia", multi:true},
+    borderWidth:2
+  },
+  edges:{
+    smooth:{type:"cubicBezier"},
+    arrows:{to:{enabled:true, scaleFactor:0.8}},
+    font:{size:0}
+  },
+  groups:{
+    period:{color:{background:"#dddddd", border:"#999999"}},
+    native:{color:{background:"#9bc4e2", border:"#3572a5"}},
+    romance:{color:{background:"#f2a0a0", border:"#a33"}},
+    contact:{color:{background:"#d6b4f0", border:"#8b55b5"}}
+  }
+};
+
+const network = new vis.Network(
+  document.getElementById("network"),
+  {nodes:nodes, edges:edges},
+  options
+);
+
+function resetGraph() {
+  nodes.forEach(n => {
+    nodes.update({
+      id:n.id,
+      color:null,
+      font:{size:23, face:"Georgia", color:"#000000", multi:true}
+    });
+  });
+  edges.forEach(e => {
+    edges.update({id:e.id, color:{color:"#bbbbbb"}, width:1.2});
+  });
+}
+
+function highlightPath(nodeIds, edgeIds) {
+  resetGraph();
+  nodes.forEach(n => {
+    if (!nodeIds.includes(n.id)) {
+      nodes.update({
+        id:n.id,
+        color:{background:"#eeeeee", border:"#cccccc"},
+        font:{size:19, face:"Georgia", color:"#888888", multi:true}
+      });
+    } else {
+      nodes.update({
+        id:n.id,
+        font:{size:28, face:"Georgia", color:"#000000", multi:true}
+      });
+    }
+  });
+  edges.forEach(e => {
+    if (!edgeIds.includes(e.id)) {
+      edges.update({id:e.id, color:{color:"#dddddd"}, width:0.6});
+    } else {
+      edges.update({id:e.id, color:{color:"#222222"}, width:4.2});
+    }
+  });
+}
+
+network.on("click", function(params) {
+  if (params.nodes.length === 0) {
+    resetGraph();
+    return;
+  }
+
+  const id = params.nodes[0];
+
+  if (id === "lician" || id === "liken_ME" || id === "like_PDE") {
+    highlightPath(
+      ["OE","ME","PDE","lician","liken_ME","like_PDE"],
+      ["e1","e3","e6","e8","e9"]
+    );
+  }
+
+  else if (id === "cweman" || id === "quemen") {
+    highlightPath(
+      ["OE","ME","cweman","quemen","plesen","Romance"],
+      ["e2","e4","e10","e11","e13"]
+    );
+  }
+
+  else if (id === "plesen" || id === "please") {
+    highlightPath(
+      ["ME","PDE","quemen","plesen","please","Romance"],
+      ["e5","e7","e11","e12","e13","e14"]
+    );
+  }
+
+  else if (id === "ME") {
+    window.open("middle_english_translations.html", "_blank");
+  }
+
+  else if (id === "Romance") {
+    window.open("old_french_frames.html", "_blank");
+  }
+});
+</script>
+</body>
+</html>
